@@ -1,8 +1,8 @@
 package com.kavitha.resume_analyzer;
 
-// These are the correct imports from Spring, not your local folder!
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.ResponseEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tika.Tika;
 import java.net.URI;
@@ -14,28 +14,27 @@ import java.util.Map;
 import java.util.List;
 
 @RestController
- // Now it will find the correct Spring version
+@RequestMapping("/")
 public class CareerCoachController {
-    
+
+    // This pulls the API Key you saved in the Render "Environment" tab
     private final String GROQ_API_KEY = System.getenv("GROQ_API_KEY");
 
-    @GetMapping("/")
-    public String home() {
-        return "AI Career Copilot Cloud Backend is running.";
-    }
-
     @PostMapping("/analyze-resume")
-    public String analyzeResume(
-        @RequestParam("file") MultipartFile file,
-        @RequestParam(value = "jd", required = false) String jobDescription
-    ) {
+    public ResponseEntity<String> analyzeResume(
+            @RequestParam("file") MultipartFile file, 
+            @RequestParam("jobDescription") String jobDescription) {
+        
         try {
+            // 1. Extract text from the PDF/Docx using Tika
             Tika tika = new Tika();
             String resumeContent = tika.parseToString(file.getInputStream());
 
+            // 2. Prepare the AI Prompt
             String prompt = "You are a Professional Resume Writer. Rewrite this resume for the JD: " + 
                             resumeContent + " \n\n JD: " + (jobDescription != null ? jobDescription : "General optimization");
 
+            // 3. Build the JSON body for Groq
             Map<String, Object> bodyMap = new HashMap<>();
             bodyMap.put("model", "llama-3.3-70b-versatile");
             bodyMap.put("messages", List.of(Map.of("role", "user", "content", prompt)));
@@ -43,6 +42,7 @@ public class CareerCoachController {
             ObjectMapper mapper = new ObjectMapper();
             String jsonBody = mapper.writeValueAsString(bodyMap);
 
+            // 4. Send the request to Groq API
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.groq.com/openai/v1/chat/completions"))
@@ -52,10 +52,13 @@ public class CareerCoachController {
                 .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            return response.body();
+            
+            // 5. Return the AI response to your React frontend
+            return ResponseEntity.ok(response.body());
 
         } catch (Exception e) {
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            // Returns a clean JSON error if something goes wrong
+            return ResponseEntity.status(500).body("{\"error\": \"" + e.getMessage() + "\"}");
         }
     }
 }
