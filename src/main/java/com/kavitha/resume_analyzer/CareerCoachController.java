@@ -31,8 +31,10 @@ public class CareerCoachController {
             String resumeContent = tika.parseToString(file.getInputStream());
 
             // 2. Prepare the AI Prompt
-            String prompt = "You are a Professional Resume Writer. Rewrite this resume for the JD: " + 
-                            resumeContent + " \n\n JD: " + (jobDescription != null ? jobDescription : "General optimization");
+            String prompt = "You are a Professional Resume Writer. Return ONLY the rewritten resume content. " +
+                "Do not include any introductory or concluding sentences like 'Here is your resume' or 'I hope this helps'. " +
+                "Rewrite this resume: " + resumeContent + " \n\n Based on this JD: " + 
+                (jobDescription != null ? jobDescription : "General optimization");
 
             // 3. Build the JSON body for Groq
             Map<String, Object> bodyMap = new HashMap<>();
